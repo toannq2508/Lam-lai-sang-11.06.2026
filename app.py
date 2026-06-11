@@ -1,6 +1,6 @@
 # THÀNH PHẦN KHỞI TẠO ĐẦU TIÊN
 import streamlit as st
-st.set_page_config(layout="wide", page_title="Fraud Detection App", page_icon="🕵️‍♂️")
+st.set_page_config(layout="wide", page_title="Credit Risk & Fraud Detection", page_icon="🕵️‍♂️")
 
 import pandas as pd
 import numpy as np
@@ -26,9 +26,9 @@ def load_data(file_bytes, file_name):
         return None
     return df
 
-# Cấu hình các biến đầu vào dựa trên tập dataset1.csv
-FEATURES = ['step', 'type', 'amount', 'oldbalanceOrg', 'newbalanceOrig', 'oldbalanceDest', 'newbalanceDest']
-TARGET = 'isFraud'
+# Cấu hình các biến đầu vào theo tập dữ liệu của anh
+FEATURES = [f'X_{i}' for i in range(1, 15)]  # Sinh tự động X_1 đến X_14
+TARGET = 'default'
 
 # ==========================================
 # THÀNH PHẦN 1: SIDEBAR - CẤU HÌNH BỀN VỮNG
@@ -43,13 +43,13 @@ with st.sidebar:
     model_choice = st.selectbox(
         "Lựa chọn Mô hình",
         options=["Random Forest", "Logistic Regression"],
-        help="Thuật toán học máy dùng để phân loại giao dịch."
+        help="Thuật toán học máy dùng để phân loại."
     )
     
     st.subheader("Tham số mô hình AI")
     if model_choice == "Random Forest":
-        n_estimators = st.slider("Số lượng cây (n_estimators)", min_value=10, max_value=200, value=50, step=10, help="Số lượng cây quyết định trong rừng.")
-        max_depth = st.slider("Độ sâu tối đa (max_depth)", min_value=2, max_value=20, value=10, step=1, help="Độ sâu của mỗi cây để tránh quá khớp (overfitting).")
+        n_estimators = st.slider("Số lượng cây (n_estimators)", min_value=10, max_value=200, value=50, step=10)
+        max_depth = st.slider("Độ sâu tối đa (max_depth)", min_value=2, max_value=20, value=10, step=1)
         random_state = st.number_input("Random State", value=42, step=1)
     else:
         max_iter = st.number_input("Số vòng lặp tối đa (max_iter)", min_value=100, max_value=1000, value=200, step=50)
@@ -64,11 +64,11 @@ with st.sidebar:
 # ==========================================
 # THÀNH PHẦN 2: HEADER - VÙNG ĐỊNH HƯỚNG
 # ==========================================
-st.title("🕵️‍♂️ Ứng dụng Phát hiện Giao dịch Gian lận")
-st.caption("Ứng dụng AI phân tích và phát hiện các giao dịch tài chính bất thường dựa trên lịch sử giao dịch và biến động số dư tài khoản.")
+st.title("🕵️‍♂️ Ứng dụng Chấm điểm Rủi ro (Risk Scoring)")
+st.caption("Ứng dụng AI phân tích và phát hiện rủi ro hồ sơ/giao dịch dựa trên dữ liệu X_1 đến X_14.")
 
 if uploaded_file is None:
-    st.info("👈 Vui lòng tải lên file dữ liệu (ví dụ: dataset1.csv) ở thanh bên trái để bắt đầu.")
+    st.info("👈 Vui lòng tải lên file dữ liệu ở thanh bên trái để bắt đầu.")
     st.stop()
 
 # Đọc dữ liệu
@@ -99,9 +99,13 @@ if train_button:
         df = df_raw.copy()
         df = df.dropna(subset=FEATURES + [TARGET])
         
-        # Mã hóa cột phân loại 'type'
-        le = LabelEncoder()
-        df['type'] = le.fit_transform(df['type'])
+        # Xử lý tự động biến phân loại (nếu có biến nào dạng object/chữ)
+        label_encoders = {}
+        for col in FEATURES:
+            if df[col].dtype == 'object':
+                le = LabelEncoder()
+                df[col] = le.fit_transform(df[col].astype(str))
+                label_encoders[col] = le
         
         X = df[FEATURES]
         y = df[TARGET]
@@ -129,7 +133,7 @@ if train_button:
         # 6. Lưu vào session_state
         st.session_state['model'] = model
         st.session_state['scaler'] = scaler
-        st.session_state['label_encoder'] = le
+        st.session_state['label_encoders'] = label_encoders
         st.session_state['y_test'] = y_test
         st.session_state['y_pred'] = y_pred
         st.session_state['y_proba'] = y_proba
@@ -153,8 +157,8 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     col1, col2, col3 = st.columns(3)
     col1.metric("Số lượng bản ghi", f"{df_raw.shape[0]:,}")
-    col2.metric("Số lượng đặc trưng (cột)", f"{df_raw.shape[1]}")
-    col3.metric("Tỷ lệ gian lận (%)", f"{(df_raw[TARGET].mean() * 100):.2f}%")
+    col2.metric("Số lượng đặc trưng (X)", f"{len(FEATURES)}")
+    col3.metric(f"Tỷ lệ {TARGET} (Rủi ro/Gian lận)", f"{(df_raw[TARGET].mean() * 100):.2f}%")
     
     st.subheader("Xem trước Dữ liệu")
     with st.container(height=300):
@@ -167,39 +171,45 @@ with tab1:
 # THÀNH PHẦN 4: TRỰC QUAN HÓA DỮ LIỆU
 # ------------------------------------------
 with tab2:
-    st.subheader("Biểu đồ phân phối các biến quan trọng")
+    st.subheader("Biểu đồ phân phối")
     
     col_v1, col_v2 = st.columns(2)
     
     with col_v1:
         # Biến mục tiêu
-        fig1 = px.pie(df_raw, names=TARGET, title="Tỷ lệ phân phối biến mục tiêu (isFraud)", hole=0.4, color_discrete_sequence=['#2ecc71', '#e74c3c'])
+        fig1 = px.pie(df_raw, names=TARGET, title=f"Tỷ lệ phân phối biến mục tiêu ({TARGET})", hole=0.4, color_discrete_sequence=['#2ecc71', '#e74c3c'])
         st.plotly_chart(fig1, use_container_width=True)
         
     with col_v2:
-        # Phân phối loại giao dịch
-        type_counts = df_raw['type'].value_counts().reset_index()
-        type_counts.columns = ['type', 'count']
-        fig2 = px.bar(type_counts, x='type', y='count', title="Phân phối loại giao dịch (type)", color='type')
+        # Phân phối của biến X_1 (biến đại diện)
+        if df_raw['X_1'].nunique() < 20:
+            fig2 = px.histogram(df_raw, x='X_1', title="Phân phối của biến X_1 (Phân loại)", color=TARGET)
+        else:
+            fig2 = px.histogram(df_raw, x='X_1', title="Phân phối của biến X_1 (Liên tục)", nbins=50, color=TARGET)
         st.plotly_chart(fig2, use_container_width=True)
 
     col_v3, col_v4 = st.columns(2)
     
     with col_v3:
-        # Phân phối Amount (dùng log scale do chênh lệch lớn)
-        fig3 = px.histogram(df_raw, x='amount', title="Phân phối Số tiền giao dịch (Amount - Log scale)", log_y=True, nbins=50)
+        # Phân phối của biến X_2
+        if df_raw['X_2'].nunique() < 20:
+            fig3 = px.histogram(df_raw, x='X_2', title="Phân phối của biến X_2 (Phân loại)", color=TARGET)
+        else:
+            fig3 = px.histogram(df_raw, x='X_2', title="Phân phối của biến X_2 (Liên tục)", nbins=50)
         st.plotly_chart(fig3, use_container_width=True)
         
     with col_v4:
-        # Boxplot amount vs fraud
-        fig4 = px.box(df_raw, x=TARGET, y='amount', title="Số tiền giao dịch theo trạng thái Gian lận", log_y=True, color=TARGET)
-        st.plotly_chart(fig4, use_container_width=True)
+        # Boxplot X_1 vs Target (nếu X_1 là biến liên tục)
+        if pd.api.types.is_numeric_dtype(df_raw['X_1']):
+            fig4 = px.box(df_raw, x=TARGET, y='X_1', title=f"Sự phân hóa của X_1 theo {TARGET}", color=TARGET)
+            st.plotly_chart(fig4, use_container_width=True)
+        else:
+            st.info("Biểu đồ Boxplot ưu tiên biến liên tục, X_1 đang là phân loại.")
 
 # ------------------------------------------
 # THÀNH PHẦN 5: KẾT QUẢ KIỂM ĐỊNH MÔ HÌNH
 # ------------------------------------------
 with tab3:
-    # BẮT ĐIỀU KIỆN CHẶT HƠN TẠI ĐÂY
     if 'model' not in st.session_state or 'y_test' not in st.session_state:
         st.info("💡 Mô hình chưa được huấn luyện. Vui lòng thiết lập tham số ở thanh bên trái và bấm 'Huấn luyện Mô hình'.")
     else:
@@ -221,7 +231,7 @@ with tab3:
             cm = confusion_matrix(y_test, y_pred)
             fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale='Blues', 
                                labels=dict(x="Dự báo", y="Thực tế"),
-                               x=['Hợp lệ (0)', 'Gian lận (1)'], y=['Hợp lệ (0)', 'Gian lận (1)'])
+                               x=['Bình thường (0)', 'Rủi ro (1)'], y=['Bình thường (0)', 'Rủi ro (1)'])
             st.plotly_chart(fig_cm, use_container_width=True)
             
         with col_m2:
@@ -240,46 +250,47 @@ with tab3:
 # THÀNH PHẦN 6: SỬ DỤNG MÔ HÌNH
 # ------------------------------------------
 with tab4:
-    # BẮT ĐIỀU KIỆN CHẶT CHO TAB SỬ DỤNG MÔ HÌNH
     if 'model' not in st.session_state or 'scaler' not in st.session_state:
         st.info("💡 Vui lòng huấn luyện mô hình trước khi sử dụng để dự báo.")
     else:
-        st.subheader("Dự báo giao dịch mới")
-        mode = st.radio("Chọn phương thức nhập dữ liệu:", ["✏️ Nhập thủ công từng giao dịch", "📁 Tải file dự báo hàng loạt"])
+        st.subheader("Dự báo dữ liệu mới")
+        mode = st.radio("Chọn phương thức nhập dữ liệu:", ["✏️ Nhập thủ công từng hồ sơ", "📁 Tải file dự báo hàng loạt"])
         
         model = st.session_state['model']
         scaler = st.session_state['scaler']
-        le = st.session_state['label_encoder']
+        label_encoders = st.session_state['label_encoders']
         
-        if mode == "✏️ Nhập thủ công từng giao dịch":
+        if mode == "✏️ Nhập thủ công từng hồ sơ":
             with st.form("predict_form"):
-                st.markdown("**Nhập thông tin giao dịch:**")
-                col_f1, col_f2 = st.columns(2)
+                st.markdown("**Nhập thông tin hồ sơ (X_1 đến X_14):**")
                 
-                with col_f1:
-                    f_step = st.number_input("Step (Giờ giao dịch)", value=1, min_value=1)
-                    f_type = st.selectbox("Loại giao dịch (type)", options=le.classes_)
-                    f_amount = st.number_input("Số tiền (amount)", value=1000.0, min_value=0.0)
-                    f_oldOrg = st.number_input("Số dư gửi ban đầu (oldbalanceOrg)", value=0.0, min_value=0.0)
+                # Chia form thành 3 cột để nhìn gọn gàng 14 trường nhập liệu
+                cols = st.columns(3)
+                input_data = {}
                 
-                with col_f2:
-                    f_newOrg = st.number_input("Số dư gửi lúc sau (newbalanceOrig)", value=0.0, min_value=0.0)
-                    f_oldDest = st.number_input("Số dư nhận ban đầu (oldbalanceDest)", value=0.0, min_value=0.0)
-                    f_newDest = st.number_input("Số dư nhận lúc sau (newbalanceDest)", value=0.0, min_value=0.0)
+                for i, col_name in enumerate(FEATURES):
+                    # Phân bổ cột tuần tự (0, 1, 2)
+                    target_col = cols[i % 3]
+                    with target_col:
+                        if col_name in label_encoders:
+                            # Nếu là biến phân loại (chữ) -> Tạo selectbox
+                            options = list(label_encoders[col_name].classes_)
+                            input_data[col_name] = st.selectbox(f"{col_name}", options=options)
+                        else:
+                            # Nếu là biến số -> Tạo number_input với giá trị mặc định là trung vị
+                            default_val = float(df_raw[col_name].median()) if col_name in df_raw else 0.0
+                            input_data[col_name] = st.number_input(f"{col_name}", value=default_val)
                 
-                submit_pred = st.form_submit_button("🔍 Chẩn đoán Giao dịch")
+                submit_pred = st.form_submit_button("🔍 Dự báo Rủi ro")
                 
                 if submit_pred:
-                    # Chuẩn bị dữ liệu
-                    input_df = pd.DataFrame([{
-                        'step': f_step,
-                        'type': le.transform([f_type])[0],
-                        'amount': f_amount,
-                        'oldbalanceOrg': f_oldOrg,
-                        'newbalanceOrig': f_newOrg,
-                        'oldbalanceDest': f_oldDest,
-                        'newbalanceDest': f_newDest
-                    }])
+                    # Chuyển đổi dữ liệu nhập tay thành DataFrame
+                    input_df = pd.DataFrame([input_data])
+                    
+                    # Encode lại các biến chữ (nếu có)
+                    for c in FEATURES:
+                        if c in label_encoders:
+                            input_df[c] = label_encoders[c].transform(input_df[c].astype(str))
                     
                     # Transform và Predict
                     input_scaled = scaler.transform(input_df)
@@ -288,9 +299,9 @@ with tab4:
                     
                     st.divider()
                     if pred == 1:
-                        st.error(f"🚨 **CẢNH BÁO:** Đây có thể là GIAO DỊCH GIAN LẬN! (Xác suất: {prob*100:.2f}%)")
+                        st.error(f"🚨 **CẢNH BÁO RỦI RO CAO:** Hồ sơ bị xếp vào nhóm Default=1! (Xác suất rủi ro: {prob*100:.2f}%)")
                     else:
-                        st.success(f"✅ Giao dịch hợp lệ. (Xác suất gian lận: {prob*100:.2f}%)")
+                        st.success(f"✅ HỒ SƠ AN TOÀN: Xếp vào nhóm Default=0. (Xác suất rủi ro: {prob*100:.2f}%)")
                         
         else:
             upload_test = st.file_uploader("Tải file CSV/Excel cần dự báo", type=['csv', 'xlsx'], key="upload_test")
@@ -305,21 +316,24 @@ with tab4:
                     st.success("File hợp lệ! Bấm nút dưới đây để dự báo.")
                     if st.button("Dự báo Hàng loạt"):
                         df_pred = df_test_raw.copy()
-                        # Xử lý các nhãn type có thể chưa xuất hiện lúc train
-                        known_classes = list(le.classes_)
-                        df_pred['type_encoded'] = df_pred['type'].apply(lambda x: le.transform([x])[0] if x in known_classes else -1)
                         
-                        X_test_batch = df_pred[FEATURES].copy()
-                        X_test_batch['type'] = df_pred['type_encoded']
+                        # Encode categorical data
+                        for c in FEATURES:
+                            if c in label_encoders:
+                                known_classes = list(label_encoders[c].classes_)
+                                # Xử lý các nhãn lạ bằng cách gán thành nhãn đầu tiên (hoặc giá trị mặc định) để tránh lỗi crash
+                                df_pred[c] = df_pred[c].apply(lambda x: x if x in known_classes else known_classes[0])
+                                df_pred[c] = label_encoders[c].transform(df_pred[c].astype(str))
                         
+                        X_test_batch = df_pred[FEATURES]
                         X_test_batch_scaled = scaler.transform(X_test_batch)
                         preds = model.predict(X_test_batch_scaled)
                         
-                        df_test_raw['Prediction_isFraud'] = preds
+                        df_test_raw[f'Prediction_{TARGET}'] = preds
                         
                         if hasattr(model, "predict_proba"):
                             probs = model.predict_proba(X_test_batch_scaled)[:, 1]
-                            df_test_raw['Probability_Fraud'] = np.round(probs, 4)
+                            df_test_raw[f'Probability_{TARGET}'] = np.round(probs, 4)
                             
                         with st.container(height=300):
                             st.dataframe(df_test_raw)
@@ -328,6 +342,6 @@ with tab4:
                         st.download_button(
                             label="📥 Tải Bảng Kết quả (CSV)",
                             data=csv,
-                            file_name="predicted_transactions.csv",
+                            file_name="predicted_results.csv",
                             mime="text/csv"
                         )
