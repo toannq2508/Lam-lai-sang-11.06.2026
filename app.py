@@ -69,7 +69,7 @@ with st.sidebar:
 # ==========================================
 # THÀNH PHẦN 2: HEADER - VÙNG ĐỊNH HƯỚNG
 # ==========================================
-st.title("🕵️‍♂️ Ứng dụng Chấm điểm Rủi ro (Risk Scoring)")
+st.title("🕵️‍♂️ Ứng dụng Chấm điểm anh Lữ (Risk Scoring)")
 st.caption("Ứng dụng AI phân tích và phát hiện rủi ro hồ sơ/giao dịch dựa trên dữ liệu đầu vào. Giao diện được thiết kế theo xu hướng công nghệ hiện đại.")
 
 if uploaded_file is None:
