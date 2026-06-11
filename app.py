@@ -30,6 +30,11 @@ def load_data(file_bytes, file_name):
 FEATURES = [f'X_{i}' for i in range(1, 15)]  # Sinh tự động X_1 đến X_14
 TARGET = 'default'
 
+# 🎨 BẢNG MÀU TRENDY (Xu hướng Modern Tech)
+COLOR_SAFE = '#00CECB'  # Xanh Cyan (An toàn)
+COLOR_RISK = '#FF5E5B'  # Đỏ Coral (Cảnh báo rủi ro)
+COLOR_PALETTE = [COLOR_SAFE, COLOR_RISK, '#FFED66', '#5C80BC', '#8C52FF']
+
 # ==========================================
 # THÀNH PHẦN 1: SIDEBAR - CẤU HÌNH BỀN VỮNG
 # ==========================================
@@ -65,7 +70,7 @@ with st.sidebar:
 # THÀNH PHẦN 2: HEADER - VÙNG ĐỊNH HƯỚNG
 # ==========================================
 st.title("🕵️‍♂️ Ứng dụng Chấm điểm Rủi ro (Risk Scoring)")
-st.caption("Ứng dụng AI phân tích và phát hiện rủi ro hồ sơ/giao dịch dựa trên dữ liệu X_1 đến X_14.")
+st.caption("Ứng dụng AI phân tích và phát hiện rủi ro hồ sơ/giao dịch dựa trên dữ liệu đầu vào. Giao diện được thiết kế theo xu hướng công nghệ hiện đại.")
 
 if uploaded_file is None:
     st.info("👈 Vui lòng tải lên file dữ liệu ở thanh bên trái để bắt đầu.")
@@ -99,7 +104,7 @@ if train_button:
         df = df_raw.copy()
         df = df.dropna(subset=FEATURES + [TARGET])
         
-        # Xử lý tự động biến phân loại (nếu có biến nào dạng object/chữ)
+        # Xử lý tự động biến phân loại
         label_encoders = {}
         for col in FEATURES:
             if df[col].dtype == 'object':
@@ -146,8 +151,8 @@ if train_button:
 # ==========================================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📋 Tổng quan Dữ liệu", 
-    "📈 Trực quan hóa Dữ liệu", 
-    "⚙️ Kết quả Kiểm định", 
+    "✨ Trực quan hóa Dữ liệu", 
+    "🎯 Kết quả Kiểm định", 
     "🚀 Sử dụng Mô hình"
 ])
 
@@ -168,46 +173,61 @@ with tab1:
     st.dataframe(df_raw[FEATURES].describe(), use_container_width=True)
 
 # ------------------------------------------
-# THÀNH PHẦN 4: TRỰC QUAN HÓA DỮ LIỆU
+# THÀNH PHẦN 4: TRỰC QUAN HÓA DỮ LIỆU (CẬP NHẬT MÀU SẮC ĐẸP MẮT)
 # ------------------------------------------
 with tab2:
-    st.subheader("Biểu đồ phân phối")
+    st.subheader("Biểu đồ phân phối theo phong cách Modern Tech")
+    
+    # Đảm bảo target được coi là string/category để lên màu rời rạc đẹp nhất
+    df_plot = df_raw.copy()
+    df_plot[TARGET] = df_plot[TARGET].astype(str)
     
     col_v1, col_v2 = st.columns(2)
     
     with col_v1:
-        # Biến mục tiêu
-        fig1 = px.pie(df_raw, names=TARGET, title=f"Tỷ lệ phân phối biến mục tiêu ({TARGET})", hole=0.4, color_discrete_sequence=['#2ecc71', '#e74c3c'])
+        # Biểu đồ Donut chart sành điệu
+        fig1 = px.pie(df_plot, names=TARGET, title=f"Tỷ lệ phân phối biến mục tiêu ({TARGET})", 
+                      hole=0.5, color_discrete_sequence=[COLOR_SAFE, COLOR_RISK])
+        fig1.update_traces(textposition='inside', textinfo='percent+label', hoverinfo='label+percent',
+                           marker=dict(line=dict(color='#000000', width=1)))
+        fig1.update_layout(showlegend=False)
         st.plotly_chart(fig1, use_container_width=True)
         
     with col_v2:
-        # Phân phối của biến X_1 (biến đại diện)
-        if df_raw['X_1'].nunique() < 20:
-            fig2 = px.histogram(df_raw, x='X_1', title="Phân phối của biến X_1 (Phân loại)", color=TARGET)
+        if df_plot['X_1'].nunique() < 20:
+            fig2 = px.histogram(df_plot, x='X_1', title="Phân phối của biến X_1 (Phân loại)", 
+                                color=TARGET, barmode='group', color_discrete_sequence=[COLOR_SAFE, COLOR_RISK])
         else:
-            fig2 = px.histogram(df_raw, x='X_1', title="Phân phối của biến X_1 (Liên tục)", nbins=50, color=TARGET)
+            fig2 = px.histogram(df_plot, x='X_1', title="Phân phối của biến X_1 (Liên tục)", 
+                                color=TARGET, nbins=40, opacity=0.75, barmode='overlay', 
+                                color_discrete_sequence=[COLOR_SAFE, COLOR_RISK])
+        fig2.update_layout(plot_bgcolor="rgba(0,0,0,0)", yaxis_title="Số lượng", xaxis_title="Giá trị X_1")
         st.plotly_chart(fig2, use_container_width=True)
 
     col_v3, col_v4 = st.columns(2)
     
     with col_v3:
-        # Phân phối của biến X_2
-        if df_raw['X_2'].nunique() < 20:
-            fig3 = px.histogram(df_raw, x='X_2', title="Phân phối của biến X_2 (Phân loại)", color=TARGET)
+        if df_plot['X_2'].nunique() < 20:
+            fig3 = px.histogram(df_plot, x='X_2', title="Phân phối của biến X_2 (Phân loại)", 
+                                color=TARGET, barmode='group', color_discrete_sequence=[COLOR_SAFE, COLOR_RISK])
         else:
-            fig3 = px.histogram(df_raw, x='X_2', title="Phân phối của biến X_2 (Liên tục)", nbins=50)
+            fig3 = px.histogram(df_plot, x='X_2', title="Phân phối của biến X_2 (Liên tục)", 
+                                color=TARGET, nbins=40, opacity=0.75, barmode='overlay',
+                                color_discrete_sequence=[COLOR_SAFE, COLOR_RISK])
+        fig3.update_layout(plot_bgcolor="rgba(0,0,0,0)", yaxis_title="Số lượng", xaxis_title="Giá trị X_2")
         st.plotly_chart(fig3, use_container_width=True)
         
     with col_v4:
-        # Boxplot X_1 vs Target (nếu X_1 là biến liên tục)
         if pd.api.types.is_numeric_dtype(df_raw['X_1']):
-            fig4 = px.box(df_raw, x=TARGET, y='X_1', title=f"Sự phân hóa của X_1 theo {TARGET}", color=TARGET)
+            fig4 = px.box(df_plot, x=TARGET, y='X_1', title=f"Sự phân hóa của X_1 theo {TARGET}", 
+                          color=TARGET, color_discrete_sequence=[COLOR_SAFE, COLOR_RISK])
+            fig4.update_layout(plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig4, use_container_width=True)
         else:
             st.info("Biểu đồ Boxplot ưu tiên biến liên tục, X_1 đang là phân loại.")
 
 # ------------------------------------------
-# THÀNH PHẦN 5: KẾT QUẢ KIỂM ĐỊNH MÔ HÌNH
+# THÀNH PHẦN 5: KẾT QUẢ KIỂM ĐỊNH MÔ HÌNH (CẬP NHẬT MÀU SẮC ĐẸP MẮT)
 # ------------------------------------------
 with tab3:
     if 'model' not in st.session_state or 'y_test' not in st.session_state:
@@ -229,19 +249,29 @@ with tab3:
         with col_m1:
             st.markdown("**Ma trận nhầm lẫn (Confusion Matrix)**")
             cm = confusion_matrix(y_test, y_pred)
-            fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale='Blues', 
-                               labels=dict(x="Dự báo", y="Thực tế"),
+            # Dùng dải màu Magma rực rỡ, thịnh hành
+            fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale='Magma', aspect="auto",
+                               labels=dict(x="Dự báo (Predicted)", y="Thực tế (Actual)", color="Số lượng"),
                                x=['Bình thường (0)', 'Rủi ro (1)'], y=['Bình thường (0)', 'Rủi ro (1)'])
+            fig_cm.update_layout(plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_cm, use_container_width=True)
             
         with col_m2:
-            st.markdown("**Đường cong ROC**")
+            st.markdown("**Đường cong ROC (ROC Curve)**")
             if y_proba is not None:
                 from sklearn.metrics import roc_curve
                 fpr, tpr, _ = roc_curve(y_test, y_proba)
                 auc_score = roc_auc_score(y_test, y_proba)
-                fig_roc = px.line(x=fpr, y=tpr, title=f"ROC Curve (AUC = {auc_score:.4f})", labels={'x': 'False Positive Rate', 'y': 'True Positive Rate'})
-                fig_roc.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=1, y0=0, y1=1)
+                
+                # Tạo ROC curve với hiệu ứng vùng fill bắt mắt
+                fig_roc = go.Figure()
+                fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', line=dict(color=COLOR_RISK, width=3),
+                                             fill='tozeroy', fillcolor='rgba(255, 94, 91, 0.2)', name=f'ROC (AUC = {auc_score:.4f})'))
+                fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', line=dict(color='gray', width=2, dash='dash'), showlegend=False))
+                
+                fig_roc.update_layout(title=f"Đường cong ROC (AUC = {auc_score:.4f})",
+                                      xaxis_title='False Positive Rate', yaxis_title='True Positive Rate',
+                                      plot_bgcolor="rgba(0,0,0,0)", showlegend=False)
                 st.plotly_chart(fig_roc, use_container_width=True)
             else:
                 st.warning("Mô hình không hỗ trợ xuất xác suất (predict_proba) để vẽ ROC.")
@@ -264,35 +294,28 @@ with tab4:
             with st.form("predict_form"):
                 st.markdown("**Nhập thông tin hồ sơ (X_1 đến X_14):**")
                 
-                # Chia form thành 3 cột để nhìn gọn gàng 14 trường nhập liệu
                 cols = st.columns(3)
                 input_data = {}
                 
                 for i, col_name in enumerate(FEATURES):
-                    # Phân bổ cột tuần tự (0, 1, 2)
                     target_col = cols[i % 3]
                     with target_col:
                         if col_name in label_encoders:
-                            # Nếu là biến phân loại (chữ) -> Tạo selectbox
                             options = list(label_encoders[col_name].classes_)
                             input_data[col_name] = st.selectbox(f"{col_name}", options=options)
                         else:
-                            # Nếu là biến số -> Tạo number_input với giá trị mặc định là trung vị
                             default_val = float(df_raw[col_name].median()) if col_name in df_raw else 0.0
                             input_data[col_name] = st.number_input(f"{col_name}", value=default_val)
                 
                 submit_pred = st.form_submit_button("🔍 Dự báo Rủi ro")
                 
                 if submit_pred:
-                    # Chuyển đổi dữ liệu nhập tay thành DataFrame
                     input_df = pd.DataFrame([input_data])
                     
-                    # Encode lại các biến chữ (nếu có)
                     for c in FEATURES:
                         if c in label_encoders:
                             input_df[c] = label_encoders[c].transform(input_df[c].astype(str))
                     
-                    # Transform và Predict
                     input_scaled = scaler.transform(input_df)
                     pred = model.predict(input_scaled)[0]
                     prob = model.predict_proba(input_scaled)[0][1] if hasattr(model, "predict_proba") else None
@@ -308,7 +331,6 @@ with tab4:
             if upload_test is not None:
                 df_test_raw = load_data(upload_test, upload_test.name)
                 
-                # Kiểm tra cột
                 missing = [c for c in FEATURES if c not in df_test_raw.columns]
                 if missing:
                     st.error(f"File thiếu các cột: {', '.join(missing)}")
@@ -317,11 +339,9 @@ with tab4:
                     if st.button("Dự báo Hàng loạt"):
                         df_pred = df_test_raw.copy()
                         
-                        # Encode categorical data
                         for c in FEATURES:
                             if c in label_encoders:
                                 known_classes = list(label_encoders[c].classes_)
-                                # Xử lý các nhãn lạ bằng cách gán thành nhãn đầu tiên (hoặc giá trị mặc định) để tránh lỗi crash
                                 df_pred[c] = df_pred[c].apply(lambda x: x if x in known_classes else known_classes[0])
                                 df_pred[c] = label_encoders[c].transform(df_pred[c].astype(str))
                         
