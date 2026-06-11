@@ -1,6 +1,6 @@
 # THÀNH PHẦN KHỞI TẠO ĐẦU TIÊN
 import streamlit as st
-st.set_page_config(layout="wide", page_title="Credit Risk & Fraud Detection", page_icon="🕵️‍♂️")
+st.set_page_config(layout="wide", page_title="Credit Risk & Fraud Detection", page_icon="🐘")
 
 import pandas as pd
 import numpy as np
@@ -69,7 +69,7 @@ with st.sidebar:
 # ==========================================
 # THÀNH PHẦN 2: HEADER - VÙNG ĐỊNH HƯỚNG
 # ==========================================
-st.title("🕵️‍♂️ Ứng dụng Chấm điểm rủi ro (Risk Scoring)")
+st.title("🕵 Ứng dụng Chấm điểm rủi ro (Risk Scoring)")
 st.caption("Ứng dụng AI phân tích và phát hiện rủi ro hồ sơ/giao dịch dựa trên dữ liệu đầu vào. Giao diện được thiết kế theo xu hướng công nghệ hiện đại.")
 
 if uploaded_file is None:
